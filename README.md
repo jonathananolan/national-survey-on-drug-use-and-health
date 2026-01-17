@@ -1,10 +1,10 @@
 # NSDUH Drug Use Survey (USA)
 
-This repository works with the National Survey on Drug Use and Health (NSDUH), a U.S. federal survey that measures substance use, mental health, and related outcomes among the civilian, non-institutionalized population. It is designed for researchers, analysts, and policymakers who want consistent, documented cross-year estimates.
+This repository works with 1979-2004 editions of the National Survey on Drug Use and Health (NSDUH), a U.S. federal survey that measures substance use, mental health, and related outcomes among the civilian, non-institutionalized population. It is designed for researchers, analysts, and policymakers who want to download every year at once and analyse data across years.
 
 ## Why This Repo Exists
 
-The NSDUH public-use files are not provided in a format to enable quick download and year-to-year comparison. Comparing across years can be problematic, because:
+The NSDUH public-use files are not provided by SAMHSA in a format to enable quick download and year-to-year comparison. Comparing across years can be problematic, because:
 
 - Methodology shifts (sampling frames, weights, and survey design) introduce breaks.
 - Questionnaire wording and variable definitions change across time.
@@ -34,9 +34,17 @@ The pipeline also standardizes a few derived fields for analysis:
 
 ## Quick Start
 
-1. Download and process data:
+1. [Install Python](https://docs.python.org/3/using/index.html) (if not already installed)
 
-This repo downloads all the files you need from the NSDUH website. To run it, install python and then run:
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Download and process NSDUH data:
+
+This python script downloads all the files you need from the NSDUH website:
 
 ```bash
 python run.py

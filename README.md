@@ -19,9 +19,11 @@ For a concise summary of comparability breaks and reasons, see `metadata/METHODO
 The pipeline produces:
 
 - `metadata/variable_metadata.csv`: cross-year variable metadata with confirmed and narrow harmonization keys.
-- `data/processed/nsduh_data.db`: a SQLite database with the survey data and metadata tables.
 - `data/processed/nsduh_data.csv`: the full survey_data table as a flat file.
 - `plots/drug_trends_18_25_combined.png`: a simple example plot of lifetime use trends (ages 18–25).
+- A SQLite database (`data/processed/nsduh_data.db`) that contains:
+  `survey_data`: the same data as nsduh_data.csv
+  `variable_metadata`: the same data as variable_metadata.csv
 
 The pipeline also standardizes a few derived fields for analysis:
 
@@ -38,20 +40,6 @@ This repo downloads all the files you need from the NSDUH website. To run it, in
 ```bash
 python run.py
 ```
-
-2. Expected outputs:
-
-- `metadata/variable_metadata.csv`
-- `data/processed/nsduh_data.db`
-- `data/processed/nsduh_data.csv`
-- `plots/drug_trends_18_25_combined.png`
-
-## SQLite Tables
-
-The SQLite database (`data/processed/nsduh_data.db`) contains:
-
-- `survey_data`: respondent-level records with harmonized age and drug flags.
-- `variable_metadata`: cross-year variable metadata and harmonization keys.
 
 ## Example Plot
 

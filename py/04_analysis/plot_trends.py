@@ -268,11 +268,11 @@ def main():
 
     # Create faceted plot with free y-axis scales
     n_drugs = len(drugs_with_data)
-    n_cols = 4
+    n_cols = 2
     n_rows = (n_drugs + n_cols - 1) // n_cols
 
     # Increase height to accommodate captions
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 3.5), sharey=False)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 7.0), sharey=False)
     if n_drugs == 1:
         axes = [axes]
     else:

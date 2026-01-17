@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+"""
+Plot drug trends from the SQLite database
+"""
+import pandas as pd
+import matplotlib.pyplot as plt
+import sqlite3
+from pathlib import Path
+from datetime import datetime
+import os
+
+# Drug flags to plot with nice labels
+DRUG_FLAGS = {
+    'ALCFLAG': 'Alcohol',
+    'COCFLAG': 'Cocaine',
+    'HERFLAG': 'Heroin',
+    'MJOFLAG': 'Marijuana only',
+    'MRJFLAG': 'Marijuana',
+    'CIGFLAG': 'Cigarettes',
+    'HALFLAG': 'Hallucinogens',
+    'PSYFLAG2': 'Any psychotherapeutics',
+    'SUMFLAG': 'Any illicit drug',
+    'INHFLAG': 'Inhalants',
+    'PCPFLAG': 'PCP',
+    'SMKFLAG': 'Smokeless tobacco',
+    'LSDFLAG': 'LSD',
+    'SEDFLAG': 'Sedatives',
+    'STMFLAG': 'Stimulants',
+    'TRQFLAG': 'Tranquilizers',
+    'CGRFLAG': 'Cigar',
+    'CRKFLAG': 'Crack cocaine',
+    'ECSFLAG': 'Ecstasy',
+    'CDUFLAG': 'Cigarettes daily',
+    'PIPFLAG': 'Pipe tobacco',
+    'TOBFLAG': 'Tobacco',
+    'IEMFLAG': 'Illicit drugs except marijuana',
+    'MTHFLAG': 'Methamphetamine',
+    'ANLFLAG': 'Pain relievers',
+    'SNFFLAG': 'Snuff',
+    'CHWFLAG': 'Chewing tobacco',
+    'OXYFLAG': 'Oxycontin',
+    'DAMTFXFLAG': 'DMT/AMT/Foxy',
+    'KETMINFLAG': 'Ketamine',
+    'GHBFLAG': 'GHB',
+    'ICEFLAG': 'Ice',
+    'IMFFLAG': 'Illegally made fentanyl',
+    'NICVAPFLAG': 'Nicotine vaping',
+    'PSILCYFLAG': 'Psilocybin',
+    'KRATOMFLAG': 'Kratom',
+}
+
+def generate_html_report(summary_stats, output_files):
+    """Generate HTML report summarizing the analysis"""
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>NSDUH Trend Analysis Report</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }}
+        h2 {{ color: #34495e; margin-top: 30px; border-bottom: 2px solid #bdc3c7; padding-bottom: 5px; }}
+        .metric {{ display: inline-block; margin: 15px 20px 15px 0; padding: 15px 25px; background: #ecf0f1; border-radius: 5px; }}
+        .metric-label {{ font-size: 12px; color: #7f8c8d; text-transform: uppercase; }}
+        .metric-value {{ font-size: 24px; font-weight: bold; color: #2c3e50; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+        th {{ background: #34495e; color: white; padding: 12px; text-align: left; }}
+        td {{ padding: 10px; border-bottom: 1px solid #ecf0f1; }}
+        tr:hover {{ background: #f8f9fa; }}
+        .footer {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #bdc3c7; color: #7f8c8d; font-size: 12px; }}
+        img {{ max-width: 100%; height: auto; margin: 20px 0; border: 1px solid #ddd; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NSDUH Trend Analysis Report (Age 18-25)</h1>
+        <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+
+        <h2>Summary</h2>
+        <div class="metric">
+            <div class="metric-label">Total Years</div>
+            <div class="metric-value">{summary_stats['total_years']}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Total Records (18-25)</div>
+            <div class="metric-value">{summary_stats['total_records']:,}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Drug Flags Analyzed</div>
+            <div class="metric-value">{summary_stats['drug_flags_count']}</div>
+        </div>
+
+        <h2>Drug Flags with Trend Data</h2>
+        <table>
+            <tr>
+                <th>Flag</th>
+                <th>Label</th>
+                <th>Years Available</th>
+            </tr>
+"""
+    for drug_info in summary_stats['drugs_with_data']:
+        html += f"""            <tr>
+                <td><code>{drug_info['flag']}</code></td>
+                <td>{drug_info['label']}</td>
+                <td>{drug_info['year_count']}</td>
+            </tr>
+"""
+
+    html += """        </table>
+
+        <h2>Visualizations</h2>
+"""
+    for output_file in output_files:
+        if output_file.endswith('.png'):
+            html += f"""        <h3>{os.path.basename(output_file)}</h3>
+        <img src="../{output_file}" alt="{os.path.basename(output_file)}">
+"""
+
+    html += f"""
+        <div class="footer">
+            <p>Data source: NSDUH SQLite database</p>
+            <p>Age group: 18-25 years (age_category = 2)</p>
+            <p>Estimates are weighted using survey analysis weights</p>
+            <p>Pipeline step: 04_analysis</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+    return html
+
+def main():
+    db_path = 'data/processed/nsduh_data.db'
+
+    if not Path(db_path).exists():
+        print(f"❌ Database not found: {db_path}")
+        print("Run 03_build_database/build_database.py first!")
+        return
+
+    print(f"Loading data from {db_path}...")
+    conn = sqlite3.connect(db_path)
+
+    # Try to load metadata from database, fallback to CSV if not available
+    flag_descriptions = {}
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='variable_metadata'")
+        if cursor.fetchone():
+            print("Loading metadata from database...")
+            df_meta = pd.read_sql_query("SELECT * FROM variable_metadata", conn)
+
+            # Get first appearance description for each flag
+            for flag in DRUG_FLAGS.keys():
+                flag_data = df_meta[df_meta['variable_name'] == flag]
+                if len(flag_data) > 0:
+                    # Get the first year's description
+                    first_row = flag_data.sort_values('year').iloc[0]
+                    flag_descriptions[flag] = first_row['variable_label']
+        else:
+            print("⚠️  No metadata table in database, trying CSV...")
+            metadata_path = 'metadata/variable_metadata.csv'
+            if Path(metadata_path).exists():
+                df_meta = pd.read_csv(metadata_path)
+                for flag in DRUG_FLAGS.keys():
+                    flag_data = df_meta[df_meta['variable_name'] == flag]
+                    if len(flag_data) > 0:
+                        first_row = flag_data.sort_values('year').iloc[0]
+                        flag_descriptions[flag] = first_row['variable_label']
+    except Exception as e:
+        print(f"⚠️  Could not load metadata: {e}")
+        print("Continuing without metadata descriptions...")
+
+    # Get all columns
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(survey_data)")
+    all_columns = [col[1] for col in cursor.fetchall()]
+
+    # Find which drug flags are in the database
+    available_flags = [flag for flag in DRUG_FLAGS.keys() if flag in all_columns]
+
+    print(f"Found {len(available_flags)} drug flags in database")
+
+    # Query data for people aged 18-25 (age_category 2=18-25)
+    query = f"""
+    SELECT year, age_category, age_group, analysis_weight, {', '.join(available_flags)}
+    FROM survey_data
+    WHERE age_category = 2
+    """
+
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+
+    print(f"Loaded {len(df):,} records for people aged 18-25")
+    print(f"Age groups: {df['age_group'].value_counts().to_dict()}")
+
+    # Calculate WEIGHTED percentages by year for each drug
+    # Weights account for survey design and make estimates comparable across time
+    results = []
+
+    for year in sorted(df['year'].unique()):
+        df_year = df[df['year'] == year]
+        row = {'year': year}
+
+        for flag in available_flags:
+            # Use weighted calculations
+            df_valid = df_year[df_year[flag].notna()]
+            if len(df_valid) > 0:
+                # Weighted count of ever used (flag == 1)
+                weighted_ever_used = df_valid[df_valid[flag] == 1]['analysis_weight'].sum()
+                # Weighted total
+                weighted_total = df_valid['analysis_weight'].sum()
+
+                if weighted_total > 0:
+                    pct = (weighted_ever_used / weighted_total) * 100
+                    row[flag] = pct
+                else:
+                    row[flag] = None
+            else:
+                row[flag] = None
+
+        results.append(row)
+
+    df_trends = pd.DataFrame(results)
+
+    # Ensure output directories exist
+    os.makedirs('plots', exist_ok=True)
+
+    # Save to CSV
+    # CSV output removed; plot images only
+
+    # Count how many drugs have data
+    drugs_with_data = []
+    for flag in available_flags:
+        if flag in df_trends.columns:
+            data = df_trends[['year', flag]].dropna()
+            if len(data) > 0:
+                label = DRUG_FLAGS.get(flag, flag)
+                drugs_with_data.append((flag, label, len(data)))
+
+    print(f"Creating plot with {len(drugs_with_data)} drugs...")
+
+    # Create faceted plot with free y-axis scales
+    n_drugs = len(drugs_with_data)
+    n_cols = 4
+    n_rows = (n_drugs + n_cols - 1) // n_cols
+
+    # Increase height to accommodate captions
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 3.5), sharey=False)
+    if n_drugs == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+
+    # Define methodology periods with different colors (exclude 2020)
+    # Note: 2002-2019 are comparable per SAMHSA PUF harmonization
+    periods = [
+        (1979, 1998, '#1f77b4', '1979-1998'),
+        (1999, 2001, '#ff7f0e', '1999-2001'),
+        (2002, 2019, '#2ca02c', '2002-2019'),  # Comparable period
+        # Skip 2020
+        (2021, 2024, '#9467bd', '2021+')
+    ]
+
+    for idx, (flag, label, _) in enumerate(drugs_with_data):
+        ax = axes[idx]
+        data = df_trends[['year', flag]].dropna()
+
+        # Exclude 2020 data
+        data = data[data['year'] != 2020]
+
+        # Plot each methodology period separately with different colors (no connecting lines across breaks)
+        for start_year, end_year, color, period_label in periods:
+            period_data = data[(data['year'] >= start_year) & (data['year'] <= end_year)]
+            if len(period_data) > 0:
+                ax.plot(period_data['year'], period_data[flag], marker='o', color=color,
+                       linewidth=2, markersize=4, label=period_label if idx == 0 else '')
+
+        # Add vertical lines for series breaks only (not within 2002-2019)
+        ax.axvline(x=1998.5, color='gray', linestyle='--', alpha=0.3, linewidth=1)
+        ax.axvline(x=2001.5, color='gray', linestyle='--', alpha=0.3, linewidth=1)
+        ax.axvline(x=2019.5, color='gray', linestyle='--', alpha=0.3, linewidth=1)
+        # Mark 2020 as excluded
+        ax.axvspan(2019.5, 2020.5, alpha=0.2, color='gray')
+
+        # Create title (bold black) and subtitle (light gray) separately
+        ax.set_title(label, fontsize=10, fontweight='bold', pad=12)
+
+        description = flag_descriptions.get(flag, '')
+        if description:
+            # Truncate long descriptions
+            if len(description) > 60:
+                description = description[:57] + '...'
+            subtitle = f"{flag}: {description}"
+            # Add subtitle below title
+            ax.text(0.5, 1.02, subtitle, transform=ax.transAxes,
+                   fontsize=7, ha='center', va='bottom', color='lightgray')
+
+        ax.set_xlabel('Year', fontsize=8)
+        ax.set_ylabel('Lifetime Use (%)', fontsize=8)
+        ax.grid(True, alpha=0.3)
+        ax.set_xlim(df_trends['year'].min() - 1, df_trends['year'].max() + 1)
+        ax.set_ylim(bottom=0)  # Start y-axis at 0
+        ax.tick_params(labelsize=8)
+
+    # Hide unused subplots
+    for idx in range(len(drugs_with_data), len(axes)):
+        axes[idx].axis('off')
+
+    plt.suptitle('Lifetime Drug Use Trends (Age 18-25)', fontsize=14, fontweight='bold', y=1.0)
+    plt.tight_layout()
+    plt.savefig('plots/drug_trends_18_25_facets.png', dpi=300, bbox_inches='tight')
+    print("Saved plot to plots/drug_trends_18_25_facets.png")
+
+    # Also create a single plot with all drugs (showing methodology periods with colors)
+    fig, ax = plt.subplots(figsize=(14, 8))
+
+    # Just show one representative drug with period colors for reference
+    if len(drugs_with_data) > 0:
+        flag, _, _ = drugs_with_data[0]  # Use first drug as reference
+        data = df_trends[['year', flag]].dropna()
+        data = data[data['year'] != 2020]
+
+        for start_year, end_year, color, period_label in periods:
+            period_data = data[(data['year'] >= start_year) & (data['year'] <= end_year)]
+            if len(period_data) > 0:
+                ax.plot(period_data['year'], period_data[flag], marker='o', color=color,
+                       linewidth=2, markersize=4, label=period_label, alpha=0.8)
+
+    # Add vertical lines for series breaks only
+    ax.axvline(x=1998.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.5)
+    ax.axvline(x=2001.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.5)
+    ax.axvline(x=2019.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.5)
+    ax.axvspan(2019.5, 2020.5, alpha=0.2, color='gray', label='2020 Excluded')
+
+    ax.set_xlabel('Year', fontsize=12)
+    ax.set_ylabel('Lifetime Use (%)', fontsize=12)
+    ax.set_title('NSDUH Drug Use Trends (Age 18-25)\n2002-2019 data are comparable (SAMHSA-harmonized)', fontsize=14, fontweight='bold')
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(df_trends['year'].min() - 1, df_trends['year'].max() + 1)
+    ax.set_ylim(bottom=0)  # Start y-axis at 0
+
+    plt.tight_layout()
+    plt.savefig('plots/drug_trends_18_25_combined.png', dpi=300, bbox_inches='tight')
+    print("Saved combined plot to plots/drug_trends_18_25_combined.png")
+
+    # Generate HTML report
+    print("\nGenerating HTML report...")
+    summary_stats = {
+        'total_years': len(df['year'].unique()),
+        'total_records': len(df),
+        'drug_flags_count': len(drugs_with_data),
+        'drugs_with_data': [
+            {'flag': flag, 'label': label, 'year_count': year_count}
+            for flag, label, year_count in drugs_with_data
+        ]
+    }
+
+    output_files = [
+        'plots/drug_trends_18_25_facets.png',
+        'plots/drug_trends_18_25_combined.png'
+    ]
+
+    html_content = generate_html_report(summary_stats, output_files)
+    report_path = 'reports/04_analysis_report.html'
+    os.makedirs('reports', exist_ok=True)
+    with open(report_path, 'w') as f:
+        f.write(html_content)
+    print(f"Saved report to {report_path}")
+
+    print("\n✓ Done!")
+
+if __name__ == '__main__':
+    main()

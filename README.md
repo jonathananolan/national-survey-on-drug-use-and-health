@@ -1,6 +1,6 @@
 # NSDUH Drug Use Survey (USA)
 
-This repository works with 1979-2004 editions of the National Survey on Drug Use and Health (NSDUH), a U.S. federal survey that measures substance use, mental health, and related outcomes among the civilian, non-institutionalized population. It is designed for researchers, analysts, and policymakers who want to download every year at once and analyse data across years.
+This repository works with the 1979-2004 editions of the National Survey on Drug Use and Health (NSDUH), a U.S. federal survey that measures substance use, mental health, and related outcomes among the civilian, non-institutionalized population. It is designed for researchers, analysts, and policymakers who want to download every year at once and analyse data across years.
 
 ## Why This Repo Exists
 

@@ -57,10 +57,7 @@ The SQLite database (`data/processed/nsduh_data.db`) contains:
 
 The plot is checked into the repo and will render on GitHub:
 
-![NSDUH Drug Trends (18–25)](plots/drug_trends_18_25_combined.png)
-
-Direct link:
-`https://github.com/jonathananolan/national-survey-on-drug-use-and-health/blob/main/plots/drug_trends_18_25_combined.png`
+![NSDUH Drug Trends (18–25) Facets](plots/drug_trends_18_25_facets.png)
 
 ## How To Read The Graph
 

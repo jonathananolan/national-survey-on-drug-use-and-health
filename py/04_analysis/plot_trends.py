@@ -321,8 +321,8 @@ def main():
         if break_year:
             ax.axvline(x=break_year - 0.5, color='gray', linestyle='--', alpha=0.4, linewidth=1)
 
-        # Create title (bold black) and subtitle (light gray) separately
-        ax.set_title(label, fontsize=10, fontweight='bold', pad=12)
+        # Create title and subtitle; Matplotlib has no per-axis subtitle, so annotate.
+        ax.set_title(label, fontsize=10, fontweight='bold', pad=16)
 
         description = flag_descriptions.get(flag, '')
         if description:
@@ -330,9 +330,16 @@ def main():
             if len(description) > 60:
                 description = description[:57] + '...'
             subtitle = f"{flag}: {description}"
-            # Add subtitle below title
-            ax.text(0.5, 1.02, subtitle, transform=ax.transAxes,
-                   fontsize=7, ha='center', va='bottom', color='lightgray')
+            ax.annotate(
+                subtitle,
+                xy=(0.0, 1.02),
+                xycoords='axes fraction',
+                ha='left',
+                va='bottom',
+                fontsize=6.5,
+                color='gray',
+                clip_on=False,
+            )
 
         ax.set_xlabel('Year', fontsize=8)
         ax.set_ylabel('Lifetime Use (%)', fontsize=8)
@@ -346,7 +353,7 @@ def main():
         axes[idx].axis('off')
 
     plt.suptitle('Lifetime Drug Use Trends (Age 18-25)', fontsize=14, fontweight='bold', y=1.0)
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.98])
     plt.savefig('plots/drug_trends_18_25_facets.png', dpi=300, bbox_inches='tight')
     print("Saved plot to plots/drug_trends_18_25_facets.png")
 

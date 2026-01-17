@@ -165,15 +165,21 @@ def process_year(zip_path, year):
             if len(present_flags) > 5:
                 print(f"               ... and {len(present_flags) - 5} more")
 
-        # Derived ecstasy ever use with series break when the question adds "molly"
-        ecstasy_sources = ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY']
-        ecstasy_source = next((col for col in ecstasy_sources if col in df.columns), None)
-        if ecstasy_source:
-            df['ecstasy_ever'] = df[ecstasy_source]
-            df['ecstasy_ever_source'] = ecstasy_source
-        else:
-            df['ecstasy_ever'] = pd.NA
-            df['ecstasy_ever_source'] = pd.NA
+        # Derived flags with series breaks when question/variable name changes
+        def add_derived_flag(target, sources):
+            source = next((col for col in sources if col in df.columns), None)
+            if source:
+                df[target] = df[source]
+                df[f"{target}_source"] = source
+            else:
+                df[target] = pd.NA
+                df[f"{target}_source"] = pd.NA
+
+        add_derived_flag('ecstasy_ever', ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY'])
+        add_derived_flag('any_illicit_ever', ['ILLFLAG', 'SUMFLAG'])
+        add_derived_flag('hallucinogen_ever', ['HALLUCFLAG', 'HALFLAG'])
+        add_derived_flag('methamphetamine_ever', ['METHAMFLAG', 'MTHFLAG'])
+        add_derived_flag('illicit_except_marijuana_ever', ['ILLEMFLAG', 'IEMFLAG'])
 
         # Add year column and respondent_id (use index as unique ID within year)
         df['year'] = year
@@ -188,6 +194,14 @@ def process_year(zip_path, year):
             'analysis_weight',
             'ecstasy_ever',
             'ecstasy_ever_source',
+            'any_illicit_ever',
+            'any_illicit_ever_source',
+            'hallucinogen_ever',
+            'hallucinogen_ever_source',
+            'methamphetamine_ever',
+            'methamphetamine_ever_source',
+            'illicit_except_marijuana_ever',
+            'illicit_except_marijuana_ever_source',
         ] + present_flags
         df_subset = df[cols_to_keep].copy()
 

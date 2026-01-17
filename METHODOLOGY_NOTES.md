@@ -43,6 +43,18 @@ While there were methodology changes in 2002 and 2015, SAMHSA has confirmed that
 - 2002 data constitutes a **new baseline** for tracking trends
 - **NOT appropriate** to compare 2002+ estimates with 2001 and earlier
 
+### 2001 Ecstasy Question Addition (Hallucinogens)
+
+**Changes:**
+
+- Added initiation and recency questions for Ecstasy (MDMA)
+- Editing rules for hallucinogen recency could now be resolved using the new Ecstasy data
+
+**Impact:**
+
+- Some hallucinogen and "illicit drugs other than marijuana" estimates increased in 2001
+- Series for hallucinogen-related variables can shift in 2001 due to the new Ecstasy questions
+
 ### 2015 Redesign
 
 **Changes:**

@@ -27,6 +27,7 @@ The pipeline also standardizes a few derived fields for analysis:
 
 - `age_category` and `age_group` from the NSDUH CATAGE codes
 - `analysis_weight` unified across years (ANALWT_C / ANALWT2_C / ANALWT / ANALWT2)
+- Created variables (e.g., `ecstasy_ever`, `any_illicit_ever`) group closely related measures that underwent small wording or naming changes; they are convenient rollups, but not perfect substitutes for the original items.
 
 ## Quick Start
 
@@ -60,6 +61,10 @@ The plot is checked into the repo and will render on GitHub:
 
 Direct link:
 `https://github.com/jonathananolan/national-survey-on-drug-use-and-health/blob/main/plots/drug_trends_18_25_combined.png`
+
+## How To Read The Graph
+
+This chart shows separate line segments for periods that are methodologically comparable. When a line breaks, it indicates a known methodology change or wording change that makes cross-period comparisons unreliable. Sudden step changes at those breaks are likely artifacts of the survey redesign, not real shifts in behavior. Trends are best interpreted within each continuous segment.
 
 ## Notes
 

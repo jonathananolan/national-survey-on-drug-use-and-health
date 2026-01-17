@@ -17,9 +17,9 @@ DRUG_FLAGS = {
     'MJOFLAG': 'Marijuana only',
     'MRJFLAG': 'Marijuana',
     'CIGFLAG': 'Cigarettes',
-    'HALFLAG': 'Hallucinogens',
+    'hallucinogen_ever': 'Hallucinogens (ever)',
     'PSYFLAG2': 'Any psychotherapeutics',
-    'SUMFLAG': 'Any illicit drug',
+    'any_illicit_ever': 'Any illicit drug (ever)',
     'INHFLAG': 'Inhalants',
     'PCPFLAG': 'PCP',
     'SMKFLAG': 'Smokeless tobacco',
@@ -29,12 +29,12 @@ DRUG_FLAGS = {
     'TRQFLAG': 'Tranquilizers',
     'CGRFLAG': 'Cigar',
     'CRKFLAG': 'Crack cocaine',
-    'ECSFLAG': 'Ecstasy',
+    'ecstasy_ever': 'Ecstasy (ever)',
     'CDUFLAG': 'Cigarettes daily',
     'PIPFLAG': 'Pipe tobacco',
     'TOBFLAG': 'Tobacco',
-    'IEMFLAG': 'Illicit drugs except marijuana',
-    'MTHFLAG': 'Methamphetamine',
+    'illicit_except_marijuana_ever': 'Illicit drugs except marijuana (ever)',
+    'methamphetamine_ever': 'Methamphetamine (ever)',
     'ANLFLAG': 'Pain relievers',
     'SNFFLAG': 'Snuff',
     'CHWFLAG': 'Chewing tobacco',
@@ -181,6 +181,32 @@ def main():
 
     print(f"Found {len(available_flags)} drug flags in database")
 
+    # Detect series breaks for derived flags when source variable changes
+    derived_sources = {
+        'ecstasy_ever': ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY'],
+        'any_illicit_ever': ['ILLFLAG', 'SUMFLAG'],
+        'hallucinogen_ever': ['HALLUCFLAG', 'HALFLAG'],
+        'methamphetamine_ever': ['METHAMFLAG', 'MTHFLAG'],
+        'illicit_except_marijuana_ever': ['ILLEMFLAG', 'IEMFLAG'],
+    }
+    break_years = {}
+    for derived_flag, sources in derived_sources.items():
+        source_col = f"{derived_flag}_source"
+        if source_col not in all_columns:
+            continue
+        source_df = pd.read_sql_query(
+            f"SELECT year, {source_col} FROM survey_data WHERE {source_col} IS NOT NULL",
+            conn
+        )
+        primary_source = sources[0]
+        primary_years = source_df[source_df[source_col] == primary_source]['year']
+        if len(primary_years) == 0:
+            continue
+        first_primary_year = int(primary_years.min())
+        earlier_sources = source_df[source_df['year'] < first_primary_year][source_col].unique()
+        if len(earlier_sources) > 0:
+            break_years[derived_flag] = first_primary_year
+
     # Query data for people aged 18-25 (age_category 2=18-25)
     query = f"""
     SELECT year, age_category, age_group, analysis_weight, {', '.join(available_flags)}
@@ -273,8 +299,17 @@ def main():
         for start_year, end_year, color, period_label in periods:
             period_data = data[(data['year'] >= start_year) & (data['year'] <= end_year)]
             if len(period_data) > 0:
-                ax.plot(period_data['year'], period_data[flag], marker='o', color=color,
-                       linewidth=2, markersize=4, label=period_label if idx == 0 else '')
+                break_year = break_years.get(flag)
+                if break_year:
+                    left = period_data[period_data['year'] < break_year]
+                    right = period_data[period_data['year'] >= break_year]
+                    for segment in (left, right):
+                        if len(segment) > 0:
+                            ax.plot(segment['year'], segment[flag], marker='o', color=color,
+                                   linewidth=2, markersize=4, label=period_label if idx == 0 else '')
+                else:
+                    ax.plot(period_data['year'], period_data[flag], marker='o', color=color,
+                           linewidth=2, markersize=4, label=period_label if idx == 0 else '')
 
         # Add vertical lines for series breaks only (not within 2002-2019)
         ax.axvline(x=1998.5, color='gray', linestyle='--', alpha=0.3, linewidth=1)
@@ -282,6 +317,9 @@ def main():
         ax.axvline(x=2019.5, color='gray', linestyle='--', alpha=0.3, linewidth=1)
         # Mark 2020 as excluded
         ax.axvspan(2019.5, 2020.5, alpha=0.2, color='gray')
+        break_year = break_years.get(flag)
+        if break_year:
+            ax.axvline(x=break_year - 0.5, color='gray', linestyle='--', alpha=0.4, linewidth=1)
 
         # Create title (bold black) and subtitle (light gray) separately
         ax.set_title(label, fontsize=10, fontweight='bold', pad=12)

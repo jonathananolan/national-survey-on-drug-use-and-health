@@ -165,12 +165,30 @@ def process_year(zip_path, year):
             if len(present_flags) > 5:
                 print(f"               ... and {len(present_flags) - 5} more")
 
+        # Derived ecstasy ever use with series break when the question adds "molly"
+        ecstasy_sources = ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY']
+        ecstasy_source = next((col for col in ecstasy_sources if col in df.columns), None)
+        if ecstasy_source:
+            df['ecstasy_ever'] = df[ecstasy_source]
+            df['ecstasy_ever_source'] = ecstasy_source
+        else:
+            df['ecstasy_ever'] = pd.NA
+            df['ecstasy_ever_source'] = pd.NA
+
         # Add year column and respondent_id (use index as unique ID within year)
         df['year'] = year
         df['respondent_id'] = df.index
 
         # Select columns to keep: year, respondent_id, age_category, age_group, analysis_weight, and all drug flags
-        cols_to_keep = ['year', 'respondent_id', 'age_category', 'age_group', 'analysis_weight'] + present_flags
+        cols_to_keep = [
+            'year',
+            'respondent_id',
+            'age_category',
+            'age_group',
+            'analysis_weight',
+            'ecstasy_ever',
+            'ecstasy_ever_source',
+        ] + present_flags
         df_subset = df[cols_to_keep].copy()
 
         print(f"\n  ✓ Processed {len(df_subset):,} records with {len(cols_to_keep)} columns")

@@ -20,7 +20,8 @@ The pipeline produces:
 
 - `metadata/variable_metadata.csv`: cross-year variable metadata with confirmed and narrow harmonization keys.
 - `data/processed/nsduh_data.csv`: the full survey_data table as a flat file.
-- `plots/drug_trends_18_25_combined.png`: a simple example plot of lifetime use trends (ages 18–25).
+- `plots/drug_trends_core.png`: core trends (alcohol, any illicit, tobacco).
+- `plots/drug_trends_illicit_facets.png`: illicit drug facets (shared y-axis).
 - A SQLite database (`data/processed/nsduh_data.db`) that contains:
   `survey_data`: the same data as nsduh_data.csv
   `variable_metadata`: the same data as variable_metadata.csv
@@ -29,7 +30,7 @@ The pipeline also standardizes a few derived fields for analysis:
 
 - `age_category` and `age_group` from the NSDUH CATAGE codes
 - `analysis_weight` unified across years (ANALWT_C / ANALWT2_C / ANALWT / ANALWT2)
-- Created variables (e.g., `ecstasy_ever`, `any_illicit_ever`) group closely related measures that underwent small wording or naming changes; they are convenient rollups, but not perfect substitutes for the original items.
+- Created variables (e.g., `ecstasy`, `any_illicit`, `hallucinogen`, `methamphetamine`) group closely related measures that underwent small wording or naming changes; they are convenient rollups, but not perfect substitutes for the original items.
 
 ## Quick Start
 
@@ -41,15 +42,17 @@ This repo downloads all the files you need from the NSDUH website. To run it, in
 python run.py
 ```
 
-## Example Plot
+## Example Plots
 
-The plot is checked into the repo and will render on GitHub:
+These plots are checked into the repo and will render on GitHub:
 
-![NSDUH Drug Trends (18–25) Facets](plots/drug_trends_18_25_facets.png)
+![Core Trends (Age 18–25)](plots/drug_trends_core.png)
+
+![Illicit Drug Trends (Age 18–25)](plots/drug_trends_illicit_facets.png)
 
 ## How To Read The Graph
 
-This chart shows separate line segments for periods that are methodologically comparable. When a line breaks, it indicates a known methodology change or wording change that makes cross-period comparisons unreliable. Sudden step changes at those breaks are likely artifacts of the survey redesign, not real shifts in behavior. Trends are best interpreted within each continuous segment.
+These charts show separate line segments for periods that are methodologically comparable. When a line breaks, it indicates a known methodology change or wording change that makes cross-period comparisons unreliable. Sudden step changes at those breaks are likely artifacts of the survey redesign, not real shifts in behavior. Trends are best interpreted within each continuous segment.
 
 ## Notes
 

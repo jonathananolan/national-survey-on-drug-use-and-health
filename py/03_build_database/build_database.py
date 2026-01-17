@@ -175,11 +175,19 @@ def process_year(zip_path, year):
                 df[target] = pd.NA
                 df[f"{target}_source"] = pd.NA
 
-        add_derived_flag('ecstasy_ever', ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY'])
-        add_derived_flag('any_illicit_ever', ['ILLFLAG', 'SUMFLAG'])
-        add_derived_flag('hallucinogen_ever', ['HALLUCFLAG', 'HALFLAG'])
-        add_derived_flag('methamphetamine_ever', ['METHAMFLAG', 'MTHFLAG'])
-        add_derived_flag('illicit_except_marijuana_ever', ['ILLEMFLAG', 'IEMFLAG'])
+        add_derived_flag('ecstasy', ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY'])
+        add_derived_flag('any_illicit', ['ILLFLAG', 'SUMFLAG'])
+        add_derived_flag('hallucinogen', ['HALLUCFLAG', 'HALFLAG'])
+        add_derived_flag('methamphetamine', ['METHAMFLAG', 'MTHFLAG'])
+        add_derived_flag('illicit_except_marijuana', ['ILLEMFLAG', 'IEMFLAG'])
+        add_derived_flag('stimulants', ['STMANYFLAG', 'STMFLAG'])
+        add_derived_flag('marijuana', ['MRJFLAG', 'MJOFLAG'])
+        add_derived_flag('psychotherapeutics', ['PSYANYFLAG2', 'PSYFLAG2'])
+        add_derived_flag('inhalants', ['INHALFLAG', 'INHFLAG'])
+        add_derived_flag('tranquilizers', ['TRQANYFLAG', 'TRQFLAG'])
+        add_derived_flag('sedatives', ['SEDANYFLAG', 'SEDFLAG'])
+        add_derived_flag('pain_relievers', ['PNRANYFLAG', 'ANLFLAG'])
+        add_derived_flag('ketamine', ['KETAFLGR', 'KETMINFLAG'])
 
         # Add year column and respondent_id (use index as unique ID within year)
         df['year'] = year
@@ -192,16 +200,32 @@ def process_year(zip_path, year):
             'age_category',
             'age_group',
             'analysis_weight',
-            'ecstasy_ever',
-            'ecstasy_ever_source',
-            'any_illicit_ever',
-            'any_illicit_ever_source',
-            'hallucinogen_ever',
-            'hallucinogen_ever_source',
-            'methamphetamine_ever',
-            'methamphetamine_ever_source',
-            'illicit_except_marijuana_ever',
-            'illicit_except_marijuana_ever_source',
+            'ecstasy',
+            'ecstasy_source',
+            'any_illicit',
+            'any_illicit_source',
+            'hallucinogen',
+            'hallucinogen_source',
+            'methamphetamine',
+            'methamphetamine_source',
+            'illicit_except_marijuana',
+            'illicit_except_marijuana_source',
+            'stimulants',
+            'stimulants_source',
+            'marijuana',
+            'marijuana_source',
+            'psychotherapeutics',
+            'psychotherapeutics_source',
+            'inhalants',
+            'inhalants_source',
+            'tranquilizers',
+            'tranquilizers_source',
+            'sedatives',
+            'sedatives_source',
+            'pain_relievers',
+            'pain_relievers_source',
+            'ketamine',
+            'ketamine_source',
         ] + present_flags
         df_subset = df[cols_to_keep].copy()
 

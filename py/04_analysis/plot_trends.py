@@ -8,43 +8,33 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 import os
+import math
 
 # Drug flags to plot with nice labels
 DRUG_FLAGS = {
     'ALCFLAG': 'Alcohol',
     'COCFLAG': 'Cocaine',
     'HERFLAG': 'Heroin',
-    'MJOFLAG': 'Marijuana only',
-    'MRJFLAG': 'Marijuana',
-    'CIGFLAG': 'Cigarettes',
-    'hallucinogen_ever': 'Hallucinogens (ever)',
-    'PSYFLAG2': 'Any psychotherapeutics',
-    'any_illicit_ever': 'Any illicit drug (ever)',
-    'INHFLAG': 'Inhalants',
+    'hallucinogen': 'Hallucinogens',
+    'any_illicit': 'Any illicit drug',
     'PCPFLAG': 'PCP',
-    'SMKFLAG': 'Smokeless tobacco',
     'LSDFLAG': 'LSD',
-    'SEDFLAG': 'Sedatives',
-    'STMFLAG': 'Stimulants',
-    'TRQFLAG': 'Tranquilizers',
-    'CGRFLAG': 'Cigar',
     'CRKFLAG': 'Crack cocaine',
-    'ecstasy_ever': 'Ecstasy (ever)',
-    'CDUFLAG': 'Cigarettes daily',
-    'PIPFLAG': 'Pipe tobacco',
+    'ecstasy': 'Ecstasy',
     'TOBFLAG': 'Tobacco',
-    'illicit_except_marijuana_ever': 'Illicit drugs except marijuana (ever)',
-    'methamphetamine_ever': 'Methamphetamine (ever)',
-    'ANLFLAG': 'Pain relievers',
-    'SNFFLAG': 'Snuff',
-    'CHWFLAG': 'Chewing tobacco',
-    'OXYFLAG': 'Oxycontin',
+    'illicit_except_marijuana': 'Illicit drugs except marijuana',
+    'methamphetamine': 'Methamphetamine',
+    'stimulants': 'Stimulants',
+    'marijuana': 'Marijuana',
+    'psychotherapeutics': 'Any psychotherapeutics',
+    'inhalants': 'Inhalants',
+    'tranquilizers': 'Tranquilizers',
+    'sedatives': 'Sedatives',
+    'ketamine': 'Ketamine',
     'DAMTFXFLAG': 'DMT/AMT/Foxy',
-    'KETMINFLAG': 'Ketamine',
     'GHBFLAG': 'GHB',
     'ICEFLAG': 'Ice',
     'IMFFLAG': 'Illegally made fentanyl',
-    'NICVAPFLAG': 'Nicotine vaping',
     'PSILCYFLAG': 'Psilocybin',
     'KRATOMFLAG': 'Kratom',
 }
@@ -130,6 +120,12 @@ def generate_html_report(summary_stats, output_files):
 """
     return html
 
+def nice_ylim(max_value, headroom=0.02):
+    """Set y-axis max with small proportional headroom."""
+    if max_value <= 0:
+        return 5.0
+    return float(max_value * (1.0 + headroom))
+
 def main():
     db_path = 'data/processed/nsduh_data.db'
 
@@ -183,11 +179,19 @@ def main():
 
     # Detect series breaks for derived flags when source variable changes
     derived_sources = {
-        'ecstasy_ever': ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY'],
-        'any_illicit_ever': ['ILLFLAG', 'SUMFLAG'],
-        'hallucinogen_ever': ['HALLUCFLAG', 'HALFLAG'],
-        'methamphetamine_ever': ['METHAMFLAG', 'MTHFLAG'],
-        'illicit_except_marijuana_ever': ['ILLEMFLAG', 'IEMFLAG'],
+        'ecstasy': ['ECSTMOFLAG', 'ECSFLAG', 'ECSTASY'],
+        'any_illicit': ['ILLFLAG', 'SUMFLAG'],
+        'hallucinogen': ['HALLUCFLAG', 'HALFLAG'],
+        'methamphetamine': ['METHAMFLAG', 'MTHFLAG'],
+        'illicit_except_marijuana': ['ILLEMFLAG', 'IEMFLAG'],
+        'stimulants': ['STMANYFLAG', 'STMFLAG'],
+        'marijuana': ['MRJFLAG', 'MJOFLAG'],
+        'psychotherapeutics': ['PSYANYFLAG2', 'PSYFLAG2'],
+        'inhalants': ['INHALFLAG', 'INHFLAG'],
+        'tranquilizers': ['TRQANYFLAG', 'TRQFLAG'],
+        'sedatives': ['SEDANYFLAG', 'SEDFLAG'],
+        'pain_relievers': ['PNRANYFLAG', 'ANLFLAG'],
+        'ketamine': ['KETAFLGR', 'KETMINFLAG'],
     }
     break_years = {}
     for derived_flag, sources in derived_sources.items():
@@ -255,24 +259,75 @@ def main():
     # Save to CSV
     # CSV output removed; plot images only
 
-    # Count how many drugs have data
+    # Split into core vs illicit plots
+    core_flags = [
+        flag for flag in [
+            'ALCFLAG',
+            'any_illicit',
+            'TOBFLAG',
+            'marijuana',
+            'illicit_except_marijuana',
+        ] if flag in available_flags
+    ]
+    illicit_candidates = [
+        'COCFLAG',
+        'CRKFLAG',
+        'HERFLAG',
+        'methamphetamine',
+        'stimulants',
+        'ecstasy',
+        'hallucinogen',
+        'LSDFLAG',
+        'PCPFLAG',
+        'ketamine',
+        'GHBFLAG',
+        'ICEFLAG',
+        'IMFFLAG',
+        'PSILCYFLAG',
+        'KRATOMFLAG',
+        'inhalants',
+        'sedatives',
+        'tranquilizers',
+        'psychotherapeutics',
+        'DAMTFXFLAG',
+    ]
+    illicit_flags = [flag for flag in illicit_candidates if flag in available_flags]
+
+    # Count how many illicit drugs have data
     drugs_with_data = []
-    for flag in available_flags:
+    for flag in illicit_flags:
         if flag in df_trends.columns:
             data = df_trends[['year', flag]].dropna()
             if len(data) > 0:
                 label = DRUG_FLAGS.get(flag, flag)
                 drugs_with_data.append((flag, label, len(data)))
 
-    print(f"Creating plot with {len(drugs_with_data)} drugs...")
+    # Order facets by most recent available percent (descending)
+    latest_year = df_trends['year'].max()
+    latest_values = {}
+    for flag, _, _ in drugs_with_data:
+        series = df_trends[['year', flag]].dropna()
+        if len(series) == 0:
+            continue
+        most_recent = series[series['year'] == latest_year]
+        if most_recent.empty:
+            most_recent = series.sort_values('year').tail(1)
+        latest_values[flag] = float(most_recent[flag].iloc[0])
 
-    # Create faceted plot with free y-axis scales
+    drugs_with_data.sort(
+        key=lambda item: latest_values.get(item[0], -1.0),
+        reverse=True
+    )
+
+    print(f"Creating illicit plot with {len(drugs_with_data)} drugs...")
+
+    # Create faceted plot with shared y-axis scales
     n_drugs = len(drugs_with_data)
     n_cols = 2
     n_rows = (n_drugs + n_cols - 1) // n_cols
 
     # Increase height to accommodate captions
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 7.0), sharey=False)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, n_rows * 7.0), sharey=True)
     if n_drugs == 1:
         axes = [axes]
     else:
@@ -287,6 +342,14 @@ def main():
         # Skip 2020
         (2021, 2024, '#9467bd', '2021+')
     ]
+
+    # Use a shared y-limit across illicit drugs for comparability
+    illicit_max = 0
+    for flag, _, _ in drugs_with_data:
+        series_max = df_trends[flag].max(skipna=True)
+        if pd.notna(series_max):
+            illicit_max = max(illicit_max, float(series_max))
+    illicit_ylim = nice_ylim(illicit_max)
 
     for idx, (flag, label, _) in enumerate(drugs_with_data):
         ax = axes[idx]
@@ -345,50 +408,95 @@ def main():
         ax.set_ylabel('Lifetime Use (%)', fontsize=8)
         ax.grid(True, alpha=0.3)
         ax.set_xlim(df_trends['year'].min() - 1, df_trends['year'].max() + 1)
-        ax.set_ylim(bottom=0)  # Start y-axis at 0
+        ax.set_ylim(0, illicit_ylim)
         ax.tick_params(labelsize=8)
 
     # Hide unused subplots
     for idx in range(len(drugs_with_data), len(axes)):
         axes[idx].axis('off')
 
-    plt.suptitle('Lifetime Drug Use Trends (Age 18-25)', fontsize=14, fontweight='bold', y=1.0)
+    plt.suptitle(
+        'Drug use by 18-25 year-olds, United States',
+        fontsize=14,
+        fontweight='bold',
+        y=1.0,
+    )
     plt.tight_layout(rect=[0, 0, 1, 0.98])
-    plt.savefig('plots/drug_trends_18_25_facets.png', dpi=300, bbox_inches='tight')
-    print("Saved plot to plots/drug_trends_18_25_facets.png")
+    plt.savefig('plots/drug_trends_illicit_facets.png', dpi=200, bbox_inches='tight')
+    print("Saved plot to plots/drug_trends_illicit_facets.png")
 
-    # Also create a single plot with all drugs (showing methodology periods with colors)
-    fig, ax = plt.subplots(figsize=(14, 8))
-
-    # Just show one representative drug with period colors for reference
-    if len(drugs_with_data) > 0:
-        flag, _, _ = drugs_with_data[0]  # Use first drug as reference
+    # Core plot: alcohol, any illicit, tobacco
+    fig, ax = plt.subplots(figsize=(12, 6))
+    core_colors = {
+        'ALCFLAG': '#1f77b4',
+        'any_illicit': '#ff7f0e',
+        'TOBFLAG': '#2ca02c',
+    }
+    plotted_labels = set()
+    for flag in core_flags:
         data = df_trends[['year', flag]].dropna()
         data = data[data['year'] != 2020]
-
-        for start_year, end_year, color, period_label in periods:
+        for start_year, end_year, _, _ in periods:
             period_data = data[(data['year'] >= start_year) & (data['year'] <= end_year)]
             if len(period_data) > 0:
-                ax.plot(period_data['year'], period_data[flag], marker='o', color=color,
-                       linewidth=2, markersize=4, label=period_label, alpha=0.8)
+                break_year = break_years.get(flag)
+                label = DRUG_FLAGS.get(flag, flag)
+                label_to_use = label if label not in plotted_labels else None
+                if break_year:
+                    left = period_data[period_data['year'] < break_year]
+                    right = period_data[period_data['year'] >= break_year]
+                    for segment in (left, right):
+                        if len(segment) > 0:
+                            ax.plot(
+                                segment['year'],
+                                segment[flag],
+                                marker='o',
+                                color=core_colors.get(flag, '#333333'),
+                                linewidth=2,
+                                markersize=4,
+                                label=label_to_use,
+                            )
+                            plotted_labels.add(label)
+                            label_to_use = None
+                else:
+                    ax.plot(
+                        period_data['year'],
+                        period_data[flag],
+                        marker='o',
+                        color=core_colors.get(flag, '#333333'),
+                        linewidth=2,
+                        markersize=4,
+                        label=label_to_use,
+                    )
+                    plotted_labels.add(label)
 
-    # Add vertical lines for series breaks only
-    ax.axvline(x=1998.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.5)
-    ax.axvline(x=2001.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.5)
-    ax.axvline(x=2019.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.5)
-    ax.axvspan(2019.5, 2020.5, alpha=0.2, color='gray', label='2020 Excluded')
+    ax.axvline(x=1998.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.0)
+    ax.axvline(x=2001.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.0)
+    ax.axvline(x=2019.5, color='gray', linestyle='--', alpha=0.4, linewidth=1.0)
+    ax.axvspan(2019.5, 2020.5, alpha=0.2, color='gray')
 
-    ax.set_xlabel('Year', fontsize=12)
-    ax.set_ylabel('Lifetime Use (%)', fontsize=12)
-    ax.set_title('NSDUH Drug Use Trends (Age 18-25)\n2002-2019 data are comparable (SAMHSA-harmonized)', fontsize=14, fontweight='bold')
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    core_max = 0
+    for flag in core_flags:
+        series_max = df_trends[flag].max(skipna=True)
+        if pd.notna(series_max):
+            core_max = max(core_max, float(series_max))
+    core_ylim = nice_ylim(core_max)
+
+    ax.set_xlabel('Year', fontsize=11)
+    ax.set_ylabel('Lifetime Use (%)', fontsize=11)
+    ax.set_title(
+        'Drug and alcohol use by 18-25 year-olds, United States',
+        fontsize=13,
+        fontweight='bold',
+    )
     ax.grid(True, alpha=0.3)
     ax.set_xlim(df_trends['year'].min() - 1, df_trends['year'].max() + 1)
-    ax.set_ylim(bottom=0)  # Start y-axis at 0
+    ax.set_ylim(0, core_ylim)
+    ax.legend(loc='upper left', fontsize=9)
 
     plt.tight_layout()
-    plt.savefig('plots/drug_trends_18_25_combined.png', dpi=300, bbox_inches='tight')
-    print("Saved combined plot to plots/drug_trends_18_25_combined.png")
+    plt.savefig('plots/drug_trends_core.png', dpi=200, bbox_inches='tight')
+    print("Saved plot to plots/drug_trends_core.png")
 
     # Generate HTML report
     print("\nGenerating HTML report...")
@@ -403,8 +511,8 @@ def main():
     }
 
     output_files = [
-        'plots/drug_trends_18_25_facets.png',
-        'plots/drug_trends_18_25_combined.png'
+        'plots/drug_trends_core.png',
+        'plots/drug_trends_illicit_facets.png',
     ]
 
     html_content = generate_html_report(summary_stats, output_files)

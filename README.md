@@ -12,7 +12,7 @@ The NSDUH public-use files are not provided in a format to enable quick download
 
 Those constraints are real and important. Still, cross-year analysis is useful when you are careful about documenting breaks. This project builds a traceable metadata layer to make those comparisons as transparent as possible.
 
-For a concise summary of comparability breaks and reasons, see [metadata/METHODOLOGY_NOTES.md](metadata/METHODOLOGY_NOTES.md).
+For a concise summary of comparability breaks and reasons, see the [methodology](METHODOLOGY_NOTES.md).
 
 ## What You Get
 

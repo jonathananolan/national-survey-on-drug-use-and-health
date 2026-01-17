@@ -4,7 +4,7 @@ This repository works with the National Survey on Drug Use and Health (NSDUH), a
 
 ## Why This Repo Exists
 
-The NSDUH public-use files are not provided in a format to enable quick download and year-to-year comparisons because:
+The NSDUH public-use files are not provided in a format to enable quick download and year-to-year comparison. Comparing across years can be problematic, because:
 
 - Methodology shifts (sampling frames, weights, and survey design) introduce breaks.
 - Questionnaire wording and variable definitions change across time.
@@ -44,13 +44,9 @@ python run.py
 
 ## Example Plots
 
-These plots are checked into the repo and will render on GitHub:
-
 ![Core Trends (Age 18–25)](plots/drug_trends_core.png)
 
 ![Illicit Drug Trends (Age 18–25)](plots/drug_trends_illicit_facets.png)
-
-## How To Read The Graph
 
 These charts show separate line segments for periods that are methodologically comparable. When a line breaks, it indicates a known methodology change or wording change that makes cross-period comparisons unreliable. Sudden step changes at those breaks are likely artifacts of the survey redesign, not real shifts in behavior. Trends are best interpreted within each continuous segment.
 
